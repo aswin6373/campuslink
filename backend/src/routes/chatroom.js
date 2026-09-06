@@ -11,13 +11,17 @@ router.use(requireAuth, withInstitution);
 router.get('/', async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, sender, text, created_at AS timestamp
+      `SELECT m.id, m.sender, m.text, m.created_at AS timestamp,
+              COALESCE(s.username, t.username, u.user_id, m.sender) AS username
        FROM (
          SELECT id, sender, text, created_at
          FROM chat_messages WHERE institution = $1
          ORDER BY created_at DESC LIMIT 200
-       ) recent
-       ORDER BY created_at`,
+       ) m
+       LEFT JOIN students s ON s.id = m.sender
+       LEFT JOIN teachers t ON t.id = m.sender
+       LEFT JOIN users u ON u.user_id = m.sender
+       ORDER BY m.created_at`,
       [req.auth.institution]
     );
     res.json(rows);

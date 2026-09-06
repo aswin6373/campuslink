@@ -15,9 +15,11 @@ router.get('/', async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT p.id, p.user_id, p.content, p.media_id, p.likes_count, p.created_at,
-              COALESCE(u.user_id, p.user_id) AS username
+              COALESCE(u.user_id, s.username, t.username, p.user_id) AS username
        FROM posts p
        LEFT JOIN users u ON u.user_id = p.user_id
+       LEFT JOIN students s ON s.id = p.user_id
+       LEFT JOIN teachers t ON t.id = p.user_id
        WHERE p.institution = $1
        ORDER BY p.created_at DESC
        LIMIT 100`,

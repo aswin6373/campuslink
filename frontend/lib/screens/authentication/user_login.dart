@@ -65,6 +65,10 @@ class _LoginScreenState extends State<LoginScreen> {
         throw 'Please select an institution';
       }
 
+      if (!_isGuestLogin && _institutionController.text.trim().isEmpty) {
+        throw 'Please enter your institution';
+      }
+
       if (!_isGuestLogin && _passwordController.text.isEmpty) {
         throw 'Please enter a password';
       }
@@ -81,6 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (result is Map && result['status'] == 'success') {
         final user = result['user'] as Map<String, dynamic>;
         final userId = user['user_id']?.toString() ?? '';
+        final displayUsername = user['username']?.toString() ?? userId;
         final email = user['email']?.toString() ?? '';
         final userType = widget.userType;
         final institution = user['institution']?.toString() ?? '';
@@ -91,12 +96,15 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setBool('isLoggedIn', true);
         await prefs.setString('authToken', token);
         await prefs.setString('userId', userId);
+        await prefs.setString('username', displayUsername);
         await prefs.setString('userType', userType);
         await prefs.setString('institution', institution);
         if (email.isNotEmpty) await prefs.setString('email', email);
 
-        // Update FCM token after successful login
-        await updateFcmToken(userId);
+        // Update FCM token after successful login (non-fatal on failure)
+        try {
+          await updateFcmToken(userId);
+        } catch (_) {}
 
         if (!mounted) return;
 

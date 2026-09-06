@@ -9,7 +9,7 @@ const router = express.Router();
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 30,
   message: { error: 'Too many login attempts. Try again later.' },
 });
 
@@ -27,6 +27,11 @@ function signToken(user) {
 
 const VALID_USER_TYPES = ['admin', 'teacher', 'student', 'guest'];
 
+/** Normalize institution: trim + lowercase, so "Ebenezer" == "ebenezer". */
+function normInst(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
 /**
  * POST /api/auth/login
  * body: { username, password, institution, userType }
@@ -34,9 +39,9 @@ const VALID_USER_TYPES = ['admin', 'teacher', 'student', 'guest'];
  */
 router.post('/login', loginLimiter, async (req, res, next) => {
   try {
-    const { username, password, institution, userType } = req.body || {};
+    const { username, password, userType } = req.body || {};
 
-    if (!username || !institution || !userType) {
+    if (!username || !req.body.institution || !userType) {
       return res
         .status(400)
         .json({ error: 'username, institution and userType are required' });
@@ -46,6 +51,7 @@ router.post('/login', loginLimiter, async (req, res, next) => {
     }
 
     const type = String(userType).toLowerCase();
+    const institution = normInst(req.body.institution);
 
     // Guests authenticate with username + institution only.
     if (type === 'guest') {
@@ -54,7 +60,7 @@ router.post('/login', loginLimiter, async (req, res, next) => {
          VALUES ($1, $2, 'guest', NULL, NULL)
          ON CONFLICT (user_id) DO UPDATE SET institution = EXCLUDED.institution
          RETURNING user_id, user_type, institution, email`,
-        [String(username).trim(), String(institution).trim()]
+        [String(username).trim(), institution]
       );
       const user = rows[0];
       return res.json({
@@ -73,31 +79,69 @@ router.post('/login', loginLimiter, async (req, res, next) => {
       return res.status(400).json({ error: 'password is required' });
     }
 
-    const { rows } = await pool.query(
-      'SELECT * FROM users WHERE user_id = $1 AND institution = $2',
-      [String(username).trim(), String(institution).trim()]
-    );
+    const usernameTrim = String(username).trim();
 
+    // Admins live in the users table.
+    if (type === 'admin') {
+      const { rows } = await pool.query(
+        'SELECT * FROM users WHERE user_id = $1 AND institution = $2',
+        [usernameTrim, institution]
+      );
+      if (rows.length === 0) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      const user = rows[0];
+      const ok = await bcrypt.compare(password, user.password_hash || '');
+      if (!ok) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      return res.json({
+        status: 'success',
+        token: signToken(user),
+        user: {
+          user_id: user.user_id,
+          email: user.email,
+          institution: user.institution,
+          user_type: user.user_type,
+        },
+      });
+    }
+
+    // Teachers & students live in their own tables (created via the
+    // management screens). Their id column acts as the login id.
+    const table = type === 'teacher' ? 'teachers' : 'students';
+    const { rows } = await pool.query(
+      `SELECT * FROM ${table} WHERE (username = $1 OR id = $1) AND institution = $2`,
+      [usernameTrim, institution]
+    );
     if (rows.length === 0) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-
-    const user = rows[0];
-
-    if (user.user_type !== type) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    const person = rows[0];
+    if (!person.password_hash) {
+      return res
+        .status(401)
+        .json({ error: 'No password set for this account. Contact your admin.' });
     }
-
-    const ok = await bcrypt.compare(password, user.password_hash || '');
+    const ok = await bcrypt.compare(password, person.password_hash);
     if (!ok) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Use the row id (STD.../TCH...) as the login identity so attendance
+    // and other id-keyed features match; username rides along for display.
+    const user = {
+      user_id: person.id,
+      user_type: type,
+      institution: person.institution,
+      email: person.email,
+    };
     res.json({
       status: 'success',
       token: signToken(user),
       user: {
         user_id: user.user_id,
+        username: person.username || person.id,
         email: user.email,
         institution: user.institution,
         user_type: user.user_type,
@@ -133,20 +177,60 @@ router.post('/signup', loginLimiter, async (req, res, next) => {
         .json({ error: 'Password must be at least 6 characters' });
     }
 
+    const inst = normInst(institution);
     const hash = await bcrypt.hash(String(password), 10);
 
-    const { rows } = await pool.query(
-      `INSERT INTO users (user_id, institution, user_type, email, password_hash)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING user_id, user_type, institution, email`,
-      [String(user_id).trim(), String(institution).trim(), type, String(email).trim(), hash]
-    );
+    // Admins go to users; teachers/students go to their own tables so they
+    // are visible in the management screens and can log in immediately.
+    if (type === 'admin') {
+      const { rows } = await pool.query(
+        `INSERT INTO users (user_id, institution, user_type, email, password_hash)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING user_id, user_type, institution, email`,
+        [String(user_id).trim(), inst, type, String(email).trim(), hash]
+      );
+      const user = rows[0];
+      return res.status(201).json({
+        success: true,
+        token: signToken(user),
+        user_id: user.user_id,
+        user_type: user.user_type,
+        institution: user.institution,
+        email: user.email,
+      });
+    }
 
-    const user = rows[0];
+    const table = type === 'teacher' ? 'teachers' : 'students';
+    const id = `${type === 'teacher' ? 'TCH' : 'STD'}${Date.now()}`;
+    const nameCol = String(user_id).trim();
+
+    const person =
+      table === 'teacher'
+        ? await pool.query(
+            `INSERT INTO teachers (id, institution, name, username, password_hash, email)
+             VALUES ($1,$2,$3,$3,$4,$5)
+             RETURNING id, username, institution, email`,
+            [id, inst, nameCol, hash, String(email).trim()]
+          )
+        : await pool.query(
+            `INSERT INTO students (id, institution, name, username, password_hash, email, fingerprint_enrolled)
+             VALUES ($1,$2,$3,$3,$4,$5,'NO')
+             RETURNING id, username, institution, email`,
+            [id, inst, nameCol, hash, String(email).trim()]
+          );
+
+    const row = person.rows[0];
+    const user = {
+      user_id: row.id,
+      user_type: type,
+      institution: row.institution,
+      email: row.email,
+    };
     res.status(201).json({
       success: true,
       token: signToken(user),
       user_id: user.user_id,
+      username: row.username || row.id,
       user_type: user.user_type,
       institution: user.institution,
       email: user.email,

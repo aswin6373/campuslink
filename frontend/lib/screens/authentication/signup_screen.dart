@@ -52,6 +52,8 @@ class _SignupScreenState extends State<SignupScreen> {
         await prefs.setString('userId', responseData['user_id']?.toString() ?? '');
         await prefs.setString('userType', responseData['user_type']?.toString() ?? '');
         await prefs.setString('institution', responseData['institution']?.toString() ?? '');
+        final signupEmail = responseData['email']?.toString() ?? '';
+        if (signupEmail.isNotEmpty) await prefs.setString('email', signupEmail);
 
         if (!mounted) return;
         Navigator.pushNamedAndRemoveUntil(
@@ -65,9 +67,13 @@ class _SignupScreenState extends State<SignupScreen> {
         );
       } else {
         setState(() {
-          _errorMessage = responseData['message'] ?? 'An error occurred';
+          _errorMessage = 'An error occurred. Please try again.';
         });
       }
+    } on ApiException catch (e) {
+      setState(() {
+        _errorMessage = e.message;
+      });
     } catch (e) {
       setState(() {
         _errorMessage = 'Error occurred: $e';

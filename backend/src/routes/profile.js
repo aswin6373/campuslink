@@ -8,11 +8,40 @@ const config = require('../config');
 const router = express.Router();
 router.use(requireAuth, withInstitution);
 
+function isPerson(req) {
+  return req.auth.userType === 'student' || req.auth.userType === 'teacher';
+}
+
 /**
- * GET /api/profile — caller's profile
+ * GET /api/profile — caller's profile (works for admins, teachers, students)
  */
 router.get('/', async (req, res, next) => {
   try {
+    if (isPerson(req)) {
+      const table = req.auth.userType === 'teacher' ? 'teachers' : 'students';
+      const fields =
+        req.auth.userType === 'teacher'
+          ? 'id, name, username, email, institution'
+          : 'id, name, username, email, institution';
+      const { rows } = await pool.query(
+        `SELECT ${fields} FROM ${table} WHERE id = $1`,
+        [req.auth.userId]
+      );
+      if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+      const u = rows[0];
+      return res.json({
+        success: true,
+        data: {
+          user_id: u.id,
+          name: u.name || u.username || u.id,
+          institution: u.institution,
+          user_type: req.auth.userType,
+          email: u.email,
+          profile_image: '',
+        },
+      });
+    }
+
     const { rows } = await pool.query(
       `SELECT user_id, institution, user_type, email, avatar_media_id, created_at
        FROM users WHERE user_id = $1`,
@@ -25,6 +54,7 @@ router.get('/', async (req, res, next) => {
       success: true,
       data: {
         user_id: u.user_id,
+        name: u.user_id,
         institution: u.institution,
         user_type: u.user_type,
         email: u.email,
@@ -37,13 +67,35 @@ router.get('/', async (req, res, next) => {
 });
 
 /**
- * POST /api/profile — update profile (multipart/form-data or JSON)
- * fields: email?, institution?, password?, avatar? (file)
+ * POST /api/profile — update profile (JSON)
+ * fields: email?, institution? (admins only), password?, avatar_base64? (admins only)
  */
 router.post('/', async (req, res, next) => {
   try {
     const { email, institution, password, avatar_base64, avatar_name, avatar_type } =
       req.body || {};
+
+    if (isPerson(req)) {
+      // Students/teachers: email + password live in their own tables.
+      const table = req.auth.userType === 'teacher' ? 'teachers' : 'students';
+      let passwordHash;
+      if (password) {
+        if (String(password).length < 6) {
+          return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        }
+        passwordHash = await bcrypt.hash(String(password), 10);
+      }
+      const { rows } = await pool.query(
+        `UPDATE ${table} SET
+           email = COALESCE($2, email),
+           password_hash = COALESCE($3, password_hash)
+         WHERE id = $1
+         RETURNING id, username, email, institution`,
+        [req.auth.userId, email || null, passwordHash || null]
+      );
+      if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+      return res.json({ success: true, data: rows[0] });
+    }
 
     let avatarMediaId;
     if (avatar_base64) {

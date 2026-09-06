@@ -18,6 +18,7 @@ class _ChatroomState extends State<Chatroom> {
   final ScrollController _scrollController = ScrollController();
   bool _isEmojiPickerVisible = false;
   String? userData;
+  String? _displayUsername;
   Timer? _timer;
 
   final List<String> _emojis = [
@@ -46,6 +47,7 @@ class _ChatroomState extends State<Chatroom> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       userData = prefs.getString('userId');
+      _displayUsername = prefs.getString('username') ?? userData;
     });
   }
 
@@ -60,6 +62,7 @@ class _ChatroomState extends State<Chatroom> {
           _messages.add(ChatMessage(
             text: messageJson['text']?.toString() ?? '',
             sender: messageJson['sender']?.toString() ?? 'Unknown',
+            username: messageJson['username']?.toString(),
             timestamp: DateTime.tryParse(messageJson['timestamp']?.toString() ?? '') ??
                 DateTime.now(),
           ));
@@ -83,6 +86,7 @@ class _ChatroomState extends State<Chatroom> {
         _messages.add(ChatMessage(
           text: message,
           sender: userData!,
+          username: _displayUsername,
           timestamp: DateTime.now(),
         ));
       });
@@ -247,7 +251,7 @@ Expanded(
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Text(
-                        message.sender,
+                        message.username,
                         style: TextStyle(
                           color: const Color.fromARGB(179, 255, 222, 5),
                           fontWeight: FontWeight.bold,
@@ -384,12 +388,14 @@ Expanded(
 
 class ChatMessage {
   final String text;
-  final String sender;
+  final String sender; // raw id — used for the "is me" check
+  final String username; // display name
   final DateTime timestamp;
 
   ChatMessage({
     required this.text,
     required this.sender,
+    String? username,
     required this.timestamp,
-  });
+  }) : username = (username == null || username.isEmpty) ? sender : username;
 }
