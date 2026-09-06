@@ -55,13 +55,54 @@ router.post('/login', loginLimiter, async (req, res, next) => {
 
     // Guests authenticate with username + institution only.
     if (type === 'guest') {
+      const guestName = String(username).trim();
+
+      // A guest name must never impersonate a registered account.
+      const adminRow = await pool.query(
+        'SELECT user_type FROM users WHERE user_id = $1',
+        [guestName]
+      );
+      if (adminRow.rows.length > 0 && adminRow.rows[0].user_type !== 'guest') {
+        return res.status(409).json({
+          error:
+            'This username is already registered. Please login with the correct role or choose a different username.',
+        });
+      }
+      const teacherRow = await pool.query(
+        'SELECT 1 FROM teachers WHERE username = $1 OR id = $1',
+        [guestName]
+      );
+      if (teacherRow.rows.length > 0) {
+        return res.status(409).json({
+          error:
+            'This username belongs to a registered teacher. Please use the Teacher login.',
+        });
+      }
+      const studentRow = await pool.query(
+        'SELECT 1 FROM students WHERE username = $1 OR id = $1',
+        [guestName]
+      );
+      if (studentRow.rows.length > 0) {
+        return res.status(409).json({
+          error:
+            'This username belongs to a registered student. Please use the Student login.',
+        });
+      }
+
       const { rows } = await pool.query(
         `INSERT INTO users (user_id, institution, user_type, email, password_hash)
          VALUES ($1, $2, 'guest', NULL, NULL)
          ON CONFLICT (user_id) DO UPDATE SET institution = EXCLUDED.institution
+         WHERE users.user_type = 'guest'
          RETURNING user_id, user_type, institution, email`,
-        [String(username).trim(), institution]
+        [guestName, institution]
       );
+      if (rows.length === 0) {
+        return res.status(409).json({
+          error:
+            'This username is already registered. Please choose a different username.',
+        });
+      }
       const user = rows[0];
       return res.json({
         status: 'success',
@@ -205,7 +246,7 @@ router.post('/signup', loginLimiter, async (req, res, next) => {
     const nameCol = String(user_id).trim();
 
     const person =
-      table === 'teacher'
+      type === 'teacher'
         ? await pool.query(
             `INSERT INTO teachers (id, institution, name, username, password_hash, email)
              VALUES ($1,$2,$3,$3,$4,$5)

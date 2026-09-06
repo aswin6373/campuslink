@@ -53,7 +53,8 @@ router.get('/upcoming', async (req, res, next) => {
       [req.auth.institution]
     );
     if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'No upcoming events' });
+      // Empty state is normal, not an error.
+      return res.json({ success: true, data: null });
     }
     res.json({ success: true, data: rows[0] });
   } catch (e) {

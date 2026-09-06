@@ -101,11 +101,15 @@ class _UserDashboardState extends State<UserDashboard> {
 
       if (!mounted) return;
 
-      final data = responseData['data'] ?? {};
+      final data = responseData['data'];
       setState(() {
-        upcomingEvent = data;
-        eventTitle = data['title'] ?? 'No upcoming events';
-        eventDate = data['event_date'];
+        upcomingEvent = data is Map
+            ? Map<String, dynamic>.from(data)
+            : <String, dynamic>{};
+        eventTitle = data is Map && data['title'] != null
+            ? data['title'].toString()
+            : 'No upcoming events';
+        eventDate = data is Map ? data['event_date']?.toString() : null;
       });
     } catch (e) {
       if (!mounted) return;

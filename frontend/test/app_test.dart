@@ -149,7 +149,7 @@ void main() {
     testWidgets('admin login shows signup link', (tester) async {
       await tester.pumpWidget(wrap(const LoginScreen(userType: 'Admin')));
       await pumpFor(tester);
-      expect(find.text('Sign Up'), findsOneWidget);
+      expect(find.text('Register'), findsOneWidget);
       expect(find.text("Don't have an account? "), findsOneWidget);
     });
   });

@@ -1,5 +1,6 @@
 import 'package:campuslink/data/data_provider.dart';
 import 'package:campuslink/services/api_client.dart';
+import 'package:campuslink/widgets/main_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,7 +37,7 @@ class _SignupScreenState extends State<SignupScreen> {
         'institution': _institutionController.text,
         'email': _emailController.text,
         'password': _passwordController.text,
-        'user_type': widget.userType,
+        'user_type': widget.userType.toLowerCase(),
       });
 
       if (!mounted) return;
@@ -47,10 +48,12 @@ class _SignupScreenState extends State<SignupScreen> {
 
         // Persist basic login state before navigating
         final prefs = await SharedPreferences.getInstance();
+        final normalizedType =
+            MainPage.normalizeRole(widget.userType);
         await prefs.setBool('isLoggedIn', true);
         await prefs.setString('authToken', responseData['token']?.toString() ?? '');
         await prefs.setString('userId', responseData['user_id']?.toString() ?? '');
-        await prefs.setString('userType', responseData['user_type']?.toString() ?? '');
+        await prefs.setString('userType', normalizedType);
         await prefs.setString('institution', responseData['institution']?.toString() ?? '');
         final signupEmail = responseData['email']?.toString() ?? '';
         if (signupEmail.isNotEmpty) await prefs.setString('email', signupEmail);
@@ -61,7 +64,7 @@ class _SignupScreenState extends State<SignupScreen> {
           '/main',
           (route) => false,
           arguments: {
-            'userType': responseData['user_type'],
+            'userType': normalizedType,
             'userId': responseData['user_id'],
           },
         );

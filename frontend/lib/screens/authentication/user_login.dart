@@ -1,4 +1,5 @@
 import 'package:campuslink/services/api_client.dart';
+import 'package:campuslink/widgets/main_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -30,6 +31,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool get _isAdminLogin => widget.userType.toLowerCase() == 'admin';
   bool get _isGuestLogin => widget.userType.toLowerCase() == 'guest';
+  bool get _canRegister =>
+      _isAdminLogin ||
+      widget.userType.toLowerCase() == 'teacher' ||
+      widget.userType.toLowerCase() == 'student';
 
   // Function to update FCM token in the database
   Future<void> updateFcmToken(String userId) async {
@@ -87,7 +92,8 @@ class _LoginScreenState extends State<LoginScreen> {
         final userId = user['user_id']?.toString() ?? '';
         final displayUsername = user['username']?.toString() ?? userId;
         final email = user['email']?.toString() ?? '';
-        final userType = widget.userType;
+        // Normalize the role so navigation and role checks always match
+        final userType = MainPage.normalizeRole(widget.userType);
         final institution = user['institution']?.toString() ?? '';
         final token = result['token']?.toString() ?? '';
 
@@ -124,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
       
           } catch (e) {
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = e is ApiException ? e.message : e.toString();
       });
     } finally {
       if (mounted) {
@@ -232,7 +238,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                   ),
                 ),
-                if (_isAdminLogin) ...[
+                if (_canRegister) ...[
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -245,9 +251,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.pushNamed(context, '/adminSignup');
+                          Navigator.pushNamed(
+                            context,
+                            '/${widget.userType.toLowerCase()}Signup',
+                          );
                         },
-                        child: Text('Sign Up'),
+                        child: Text('Register'),
                       ),
                     ],
                   ),

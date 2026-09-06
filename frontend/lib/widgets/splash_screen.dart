@@ -1,3 +1,4 @@
+import 'package:campuslink/widgets/main_page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
@@ -46,7 +47,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     if (isLoggedIn) {
       final userId = prefs.getString('userId') ?? '';
-      final userType = prefs.getString('userType') ?? '';
+      final userType =
+          MainPage.normalizeRole(prefs.getString('userType') ?? '');
 
       Navigator.of(context).pushReplacementNamed(
         '/main',

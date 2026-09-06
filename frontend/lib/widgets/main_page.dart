@@ -22,6 +22,14 @@ class MainPage extends StatefulWidget {
 
   const MainPage({super.key, required this.userType, required this.userId});
 
+  /// Normalizes any incoming role value ("admin", "ADMIN", "Admin") to
+  /// "Admin" so role matching can never break due to case differences.
+  static String normalizeRole(String role) {
+    final r = role.trim().toLowerCase();
+    if (r.isEmpty) return 'Guest';
+    return r[0].toUpperCase() + r.substring(1);
+  }
+
   @override
   State<MainPage> createState() => _MainPageState();
 }
@@ -51,10 +59,12 @@ class _MainPageState extends State<MainPage> {
       ),
     ];
 
-    switch (widget.userType) {
-      case 'Guest':
+    switch (widget.userType.toLowerCase()) {
+      case 'guest':
         _pages = [
-          UserDashboard(userRole: widget.userType, userId: widget.userId),
+          UserDashboard(
+              userRole: MainPage.normalizeRole(widget.userType),
+              userId: widget.userId),
           CommunityPost(username: widget.userId),
           Chatbot(),
         ];
@@ -67,11 +77,13 @@ class _MainPageState extends State<MainPage> {
           ),
         ];
         break;
-      case 'Admin':
-      case 'Student':
-      case 'Teacher':
+      case 'admin':
+      case 'student':
+      case 'teacher':
         _pages = [
-          UserDashboard(userRole: widget.userType, userId: widget.userId),
+          UserDashboard(
+              userRole: MainPage.normalizeRole(widget.userType),
+              userId: widget.userId),
           CommunityPost(username: widget.userId),
           Chatroom(),
           Chatbot(),

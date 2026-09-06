@@ -77,7 +77,7 @@ class _ManageStudentsScreenState extends State<ManageStudentsScreen> {
           );
         },
       ),
-      floatingActionButton: widget.userType == 'Admin'
+      floatingActionButton: widget.userType.toLowerCase() == 'admin'
           ? FloatingActionButton(
               onPressed: () => _showAddStudentDialog(context),
               child: const Icon(Icons.add),
