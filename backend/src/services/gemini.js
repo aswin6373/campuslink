@@ -6,10 +6,11 @@ const config = require('../config');
  * (deprecated, rate-limited, or erroring).
  */
 const DEFAULT_MODEL_CHAIN = [
-  'gemini-3.5-flash-lite', // primary — user request
-  'gemini-2.5-flash-lite',
-  'gemini-2.5-flash',
-  'gemini-2.0-flash', // known stable fallback
+  'gemini-3.5-flash-lite',      // primary — user request (verified live 2026-09)
+  'gemini-3.1-flash-lite',      // stable 3.1 lite
+  'gemini-2.5-flash-lite',      // stable 2.5 lite
+  'gemini-2.5-flash',           // stable mid-size
+  'gemini-flash-lite-latest',   // Google-managed alias, always points at a live lite model
 ];
 
 // Optional override via env: GEMINI_MODELS="model-a,model-b"

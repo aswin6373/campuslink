@@ -19,6 +19,6 @@ services:
       - key: GEMINI_API_KEY
         sync: false # free key from https://aistudio.google.com/apikey
       - key: GEMINI_MODELS
-        value: "gemini-3.5-flash-lite,gemini-2.5-flash-lite,gemini-2.5-flash,gemini-2.0-flash" # fallback chain
+        value: "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-2.5-flash-lite,gemini-2.5-flash,gemini-flash-lite-latest" # fallback chain
       - key: DEVICE_OFFLINE_MINUTES
         value: "2"
