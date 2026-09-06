@@ -32,6 +32,18 @@ function normInst(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+/** Maps an account status to a friendly login error (null = ok). */
+function statusError(status) {
+  switch (status) {
+    case 'pending':
+      return 'Your account is waiting for admin approval. You will be able to log in once your institution admin approves it.';
+    case 'rejected':
+      return 'Your account registration was rejected. Please contact your institution admin.';
+    default:
+      return null; // 'approved' or legacy rows
+  }
+}
+
 /**
  * POST /api/auth/login
  * body: { username, password, institution, userType }
@@ -136,6 +148,8 @@ router.post('/login', loginLimiter, async (req, res, next) => {
       if (!ok) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
+      const authError = statusError(user.status);
+      if (authError) return res.status(403).json({ error: authError });
       return res.json({
         status: 'success',
         token: signToken(user),
@@ -168,6 +182,8 @@ router.post('/login', loginLimiter, async (req, res, next) => {
     if (!ok) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+    const personAuthError = statusError(person.status);
+    if (personAuthError) return res.status(403).json({ error: personAuthError });
 
     // Use the row id (STD.../TCH...) as the login identity so attendance
     // and other id-keyed features match; username rides along for display.
@@ -221,16 +237,40 @@ router.post('/signup', loginLimiter, async (req, res, next) => {
     const inst = normInst(institution);
     const hash = await bcrypt.hash(String(password), 10);
 
-    // Admins go to users; teachers/students go to their own tables so they
-    // are visible in the management screens and can log in immediately.
+    // ---- Admin signup ----
+    // The FIRST admin of an institution registers openly (they claim the
+    // institution). Any admin after that goes to the approval queue of the
+    // existing admins.
     if (type === 'admin') {
+      const existing = await pool.query(
+        `SELECT count(*)::int AS n FROM users
+         WHERE institution = $1 AND user_type = 'admin' AND status = 'approved'`,
+        [inst]
+      );
+      const isFirstAdmin = existing.rows[0].n === 0;
+
       const { rows } = await pool.query(
-        `INSERT INTO users (user_id, institution, user_type, email, password_hash)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING user_id, user_type, institution, email`,
-        [String(user_id).trim(), inst, type, String(email).trim(), hash]
+        `INSERT INTO users (user_id, institution, user_type, email, password_hash, status)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING user_id, user_type, institution, email, status`,
+        [String(user_id).trim(), inst, type, String(email).trim(), hash,
+         isFirstAdmin ? 'approved' : 'pending']
       );
       const user = rows[0];
+
+      if (!isFirstAdmin) {
+        return res.status(202).json({
+          success: true,
+          pending: true,
+          message:
+            'Registration received. Your account is waiting for approval by your institution admin.',
+          user_id: user.user_id,
+          user_type: user.user_type,
+          institution: user.institution,
+          email: user.email,
+        });
+      }
+
       return res.status(201).json({
         success: true,
         token: signToken(user),
@@ -248,33 +288,29 @@ router.post('/signup', loginLimiter, async (req, res, next) => {
     const person =
       type === 'teacher'
         ? await pool.query(
-            `INSERT INTO teachers (id, institution, name, username, password_hash, email)
-             VALUES ($1,$2,$3,$3,$4,$5)
-             RETURNING id, username, institution, email`,
+            `INSERT INTO teachers (id, institution, name, username, password_hash, email, status)
+             VALUES ($1,$2,$3,$3,$4,$5,'pending')
+             RETURNING id, username, institution, email, status`,
             [id, inst, nameCol, hash, String(email).trim()]
           )
         : await pool.query(
-            `INSERT INTO students (id, institution, name, username, password_hash, email, fingerprint_enrolled)
-             VALUES ($1,$2,$3,$3,$4,$5,'NO')
-             RETURNING id, username, institution, email`,
+            `INSERT INTO students (id, institution, name, username, password_hash, email, fingerprint_enrolled, status)
+             VALUES ($1,$2,$3,$3,$4,$5,'NO','pending')
+             RETURNING id, username, institution, email, status`,
             [id, inst, nameCol, hash, String(email).trim()]
           );
 
     const row = person.rows[0];
-    const user = {
+    res.status(202).json({
+      success: true,
+      pending: true,
+      message:
+        'Registration received. Your account is waiting for approval by your institution admin.',
       user_id: row.id,
+      username: row.username || row.id,
       user_type: type,
       institution: row.institution,
       email: row.email,
-    };
-    res.status(201).json({
-      success: true,
-      token: signToken(user),
-      user_id: user.user_id,
-      username: row.username || row.id,
-      user_type: user.user_type,
-      institution: user.institution,
-      email: user.email,
     });
   } catch (e) {
     if (e.code === '23505') {

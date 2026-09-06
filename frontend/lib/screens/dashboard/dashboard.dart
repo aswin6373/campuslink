@@ -2,6 +2,7 @@ import 'package:campuslink/screens/dashboard/attendance_report.dart';
 import 'package:campuslink/screens/dashboard/event/event_detail_screen.dart';
 import 'package:campuslink/screens/dashboard/event/event_list_screen.dart';
 import 'package:campuslink/screens/dashboard/chatbot_manage.dart';
+import 'package:campuslink/screens/dashboard/approvals_screen.dart';
 import 'package:campuslink/screens/dashboard/student_management_screen.dart';
 import 'package:campuslink/screens/dashboard/teacher_management_screen.dart';
 import 'package:flutter/material.dart';

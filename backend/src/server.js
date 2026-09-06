@@ -36,6 +36,7 @@ app.use('/api/chatroom', require('./routes/chatroom'));
 app.use('/api/chatbot', require('./routes/chatbot'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/device', require('./routes/device'));
+app.use('/api/approvals', require('./routes/approvals'));
 
 // Health check (used by Render)
 app.get('/healthz', async (req, res) => {

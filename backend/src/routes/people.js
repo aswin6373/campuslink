@@ -9,8 +9,8 @@ const router = express.Router();
 // (a router.use() here would intercept every /api/* request).
 
 
-const STUDENT_FIELDS = 'id, name, username, grade, section, contact, email, fingerprint_enrolled';
-const TEACHER_FIELDS = 'id, name, username, subject, qualification, experience, contact, email';
+const STUDENT_FIELDS = 'id, name, username, grade, section, contact, email, fingerprint_enrolled, status';
+const TEACHER_FIELDS = 'id, name, username, subject, qualification, experience, contact, email, status';
 
 /* ---------------- Students ---------------- */
 
@@ -40,8 +40,8 @@ router.post('/students', requireAuth, withInstitution, async (req, res, next) =>
     const studentId = id || `STD${Date.now()}`;
 
     const { rows } = await pool.query(
-      `INSERT INTO students (id, institution, name, username, password_hash, grade, section, contact, email, fingerprint_enrolled)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      `INSERT INTO students (id, institution, name, username, password_hash, grade, section, contact, email, fingerprint_enrolled, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'approved')
        ON CONFLICT (id) DO UPDATE SET
          name=EXCLUDED.name, username=EXCLUDED.username, password_hash=COALESCE(EXCLUDED.password_hash, students.password_hash),
          grade=EXCLUDED.grade, section=EXCLUDED.section, contact=EXCLUDED.contact, email=EXCLUDED.email,
@@ -127,8 +127,8 @@ router.post('/teachers', requireAuth, withInstitution, async (req, res, next) =>
     const teacherId = id || `TCH${Date.now()}`;
 
     const { rows } = await pool.query(
-      `INSERT INTO teachers (id, institution, name, username, password_hash, subject, qualification, experience, contact, email)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      `INSERT INTO teachers (id, institution, name, username, password_hash, subject, qualification, experience, contact, email, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'approved')
        ON CONFLICT (id) DO UPDATE SET
          name=EXCLUDED.name, username=EXCLUDED.username, password_hash=COALESCE(EXCLUDED.password_hash, teachers.password_hash),
          subject=EXCLUDED.subject, qualification=EXCLUDED.qualification, experience=EXCLUDED.experience,

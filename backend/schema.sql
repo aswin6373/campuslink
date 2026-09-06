@@ -11,6 +11,7 @@ create table if not exists users (
   email          text,
   password_hash  text,              -- bcrypt; NULL for guests
   avatar_media_id uuid,
+  status         text not null default 'approved' check (status in ('approved','pending','rejected')),
   created_at     timestamptz not null default now()
 );
 
@@ -32,6 +33,7 @@ create table if not exists students (
   contact              text,
   email                text,
   fingerprint_enrolled text not null default 'NO' check (fingerprint_enrolled in ('NO','PENDING','YES')),
+  status               text not null default 'approved' check (status in ('approved','pending','rejected')),
   created_at           timestamptz not null default now()
 );
 create index if not exists students_institution_idx on students (institution);
@@ -47,6 +49,7 @@ create table if not exists teachers (
   experience    text,
   contact       text,
   email         text,
+  status        text not null default 'approved' check (status in ('approved','pending','rejected')),
   created_at    timestamptz not null default now()
 );
 create index if not exists teachers_institution_idx on teachers (institution);

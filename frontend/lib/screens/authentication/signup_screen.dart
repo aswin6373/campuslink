@@ -1,4 +1,5 @@
 import 'package:campuslink/data/data_provider.dart';
+import 'package:campuslink/screens/authentication/pending_approval_screen.dart';
 import 'package:campuslink/services/api_client.dart';
 import 'package:campuslink/widgets/main_page.dart';
 import 'package:flutter/material.dart';
@@ -43,6 +44,20 @@ class _SignupScreenState extends State<SignupScreen> {
       if (!mounted) return;
 
       if (responseData is Map && responseData['success'] == true) {
+        // Accounts created through public signup need admin approval
+        // before they can log in (first admin of a college is instant).
+        if (responseData['pending'] == true || responseData['token'] == null) {
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (_) => PendingApprovalScreen(
+              userType: MainPage.normalizeRole(widget.userType),
+              institution:
+                  responseData['institution']?.toString() ?? widget.userType,
+              email: responseData['email']?.toString(),
+            ),
+          ));
+          return;
+        }
+
         final dataProvider = Provider.of<DataProvider>(context, listen: false);
         dataProvider.currentInstitution = responseData['institution'];
 
@@ -53,6 +68,7 @@ class _SignupScreenState extends State<SignupScreen> {
         await prefs.setBool('isLoggedIn', true);
         await prefs.setString('authToken', responseData['token']?.toString() ?? '');
         await prefs.setString('userId', responseData['user_id']?.toString() ?? '');
+        await prefs.setString('username', responseData['username']?.toString() ?? '');
         await prefs.setString('userType', normalizedType);
         await prefs.setString('institution', responseData['institution']?.toString() ?? '');
         final signupEmail = responseData['email']?.toString() ?? '';
