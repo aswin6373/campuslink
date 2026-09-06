@@ -32,6 +32,7 @@ class UserDashboard extends StatefulWidget {
 class _UserDashboardState extends State<UserDashboard> {
   String eventTitle = 'Loading...';
   String institution = '';
+  String displayName = '';
   String? eventDate;
   late StreamSubscription eventUpdateSubscription;
   Map<String, dynamic> upcomingEvent = {};
@@ -79,6 +80,9 @@ class _UserDashboardState extends State<UserDashboard> {
     if (!mounted) return;
     setState(() {
       institution = prefs.getString('institution') ?? '';
+      // Prefer the friendly username; fall back to the raw id.
+      displayName =
+          prefs.getString('username') ?? prefs.getString('userId') ?? '';
     });
   }
 
@@ -152,7 +156,7 @@ class _UserDashboardState extends State<UserDashboard> {
                   ).animate().fadeIn().slideX(),
                   const SizedBox(height: 8),
                   Text(
-                    widget.userId,
+                    displayName.isNotEmpty ? displayName : widget.userId,
                     style: theme.textTheme.headlineLarge,
                   ).animate().fadeIn().slideX(delay: 200.ms),
                 ],
