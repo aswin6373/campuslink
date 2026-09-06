@@ -126,12 +126,16 @@ class _ChatroomState extends State<Chatroom> {
 Widget build(BuildContext context) {
   final theme = Theme.of(context);
   
+  final isDark = theme.brightness == Brightness.dark;
+  final surface = isDark ? const Color(0xFF171A21) : Colors.white;
+  final deep = theme.scaffoldBackgroundColor;
+
   return Scaffold(
-    backgroundColor: const Color(0xFF1A1D21), // Dark background
+    backgroundColor: deep,
     appBar: AppBar(
       elevation: 0,
       automaticallyImplyLeading: false,
-      backgroundColor: const Color(0xFF252A34),
+      backgroundColor: surface,
       title: Row(
         children: [
           CircleAvatar(
@@ -283,7 +287,7 @@ Expanded(
 ),
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF252A34),
+              color: surface,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.2),
@@ -297,7 +301,7 @@ Expanded(
                   Container(
                     height: 200,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1A1D21),
+                      color: deep,
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                     ),
                     child: GridView.builder(

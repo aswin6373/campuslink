@@ -97,11 +97,16 @@ void main() {
       await tester.pump();
       expect(find.text('CampusLink'), findsOneWidget);
       expect(find.text('Connecting Campus Communities'), findsOneWidget);
+      // Flush the pending navigation future so the test ends clean.
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
     });
 
     testWidgets('redirects to login when not logged in', (tester) async {
       await tester.pumpWidget(wrap(const SplashScreen()));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
       expect(find.text('EMPTY'), findsOneWidget);
     });
 
@@ -113,7 +118,9 @@ void main() {
         'institution': 'ebenezer',
       });
       await tester.pumpWidget(wrap(const SplashScreen()));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
       expect(find.text('EMPTY'), findsOneWidget);
     });
   });
@@ -129,21 +136,23 @@ void main() {
       expect(find.text('Please enter a username'), findsOneWidget);
     });
 
-    testWidgets('guest mode shows institution dropdown instead of password',
+    testWidgets('guest mode shows institution field instead of password',
         (tester) async {
       await tester.pumpWidget(wrap(const LoginScreen(userType: 'Guest')));
       await pumpFor(tester);
 
       expect(find.text('Continue as Guest'), findsOneWidget);
-      expect(find.text('Select Institution'), findsOneWidget);
+      expect(find.text('Institution (browse as guest)'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Password'), findsNothing);
 
-      // Guest requires institution selection
+      // Guest requires an institution
       await tester.enterText(
           find.widgetWithText(TextField, 'Username'), 'guestuser');
+      await tester.ensureVisible(find.text('Continue as Guest'));
       await tester.tap(find.text('Continue as Guest'));
-      await pumpFor(tester);
-      expect(find.text('Please select an institution'), findsOneWidget);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Please enter your institution'), findsOneWidget);
     });
 
     testWidgets('admin login shows signup link', (tester) async {
@@ -159,8 +168,9 @@ void main() {
       await tester.pumpWidget(wrap(const SignupScreen(userType: 'Admin')));
       await pumpFor(tester);
 
-      await tester.ensureVisible(find.text('Sign Up'));
-      await tester.tap(find.text('Sign Up'));
+      final createBtn = find.widgetWithText(ElevatedButton, 'Create Account');
+      await tester.ensureVisible(createBtn);
+      await tester.tap(createBtn);
       await pumpFor(tester);
 
       expect(find.text('Please enter your name'), findsOneWidget);
@@ -184,8 +194,9 @@ void main() {
       await tester.enterText(
           find.widgetWithText(TextFormField, 'Confirm Password'), 'secret123');
 
-      await tester.ensureVisible(find.text('Sign Up'));
-      await tester.tap(find.text('Sign Up'));
+      final createBtn = find.widgetWithText(ElevatedButton, 'Create Account');
+      await tester.ensureVisible(createBtn);
+      await tester.tap(createBtn);
       await pumpFor(tester);
 
       expect(find.text('Invalid email format'), findsOneWidget);
@@ -206,8 +217,9 @@ void main() {
       await tester.enterText(
           find.widgetWithText(TextFormField, 'Confirm Password'), 'other123');
 
-      await tester.ensureVisible(find.text('Sign Up'));
-      await tester.tap(find.text('Sign Up'));
+      final createBtn = find.widgetWithText(ElevatedButton, 'Create Account');
+      await tester.ensureVisible(createBtn);
+      await tester.tap(createBtn);
       await pumpFor(tester);
 
       expect(find.text('Passwords do not match'), findsOneWidget);
@@ -222,10 +234,11 @@ void main() {
       ));
       await pumpFor(tester);
 
-      expect(find.text('Guest Dashboard'), findsOneWidget);
+      // Role chip + nav tabs
+      expect(find.text('Guest'), findsOneWidget);
       expect(find.text('Dashboard'), findsOneWidget);
       expect(find.text('Community'), findsOneWidget);
-      expect(find.text('Chatbot'), findsOneWidget);
+      expect(find.text('Assistant'), findsOneWidget);
     });
 
     testWidgets('admin layout has 4 tabs and switching tabs works',
@@ -235,14 +248,14 @@ void main() {
       ));
       await pumpFor(tester);
 
-      expect(find.text('Dashboard'), findsOneWidget);
+      expect(find.text('Admin'), findsOneWidget);
       expect(find.text('Chatroom'), findsOneWidget);
 
       await tester.tap(find.text('Community'));
       await pumpFor(tester);
       expect(find.text('Community Post'), findsOneWidget);
 
-      await tester.tap(find.text('Chatbot'));
+      await tester.tap(find.text('Assistant'));
       await pumpFor(tester);
       expect(find.text('Campus Assistant'), findsOneWidget);
     });
@@ -255,7 +268,7 @@ void main() {
       await pumpFor(tester);
 
       // Must not crash and must render a working shell
-      expect(find.text('Guest Dashboard'), findsOneWidget);
+      expect(find.text('Guest'), findsOneWidget);
     });
   });
 
@@ -328,10 +341,9 @@ void main() {
       ));
       await pumpFor(tester);
 
-      expect(find.text('Student Dashboard'), findsOneWidget);
-      expect(find.text('Welcome Back,'), findsOneWidget);
-      expect(find.text('stud1'), findsOneWidget);
-      expect(find.text('Attendance'), findsOneWidget);
+      expect(find.text('Student'), findsOneWidget); // role chip
+      expect(find.text('stud1'), findsOneWidget); // welcome name
+      expect(find.text('My Attendance'), findsOneWidget);
     });
 
     testWidgets('teacher dashboard shows manage students/events',
@@ -341,7 +353,7 @@ void main() {
       ));
       await pumpFor(tester);
 
-      expect(find.text('Teacher Dashboard'), findsOneWidget);
+      expect(find.text('Teacher'), findsOneWidget); // role chip
       expect(find.text('Manage Students'), findsOneWidget);
       expect(find.text('Manage Events'), findsOneWidget);
       expect(find.text('Attendance'), findsOneWidget);
@@ -353,9 +365,9 @@ void main() {
       ));
       await pumpFor(tester);
 
-      expect(find.text('Admin Dashboard'), findsOneWidget);
-      expect(find.text('Total Students'), findsOneWidget);
-      expect(find.text('Total Teachers'), findsOneWidget);
+      expect(find.text('Admin'), findsOneWidget); // role chip
+      expect(find.text('Students'), findsOneWidget);
+      expect(find.text('Teachers'), findsOneWidget);
     });
   });
 

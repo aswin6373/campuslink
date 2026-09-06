@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:campuslink/app_theme.dart';
 import 'package:campuslink/services/api_client.dart';
 
 class ChatbotManagementScreen extends StatefulWidget {
@@ -394,7 +395,7 @@ Future<void> _savePredefinedQuestion(String category, String questionText, Strin
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFF4CAF50), 
+        backgroundColor: AppTheme.successColor,
       ),
     );
   }

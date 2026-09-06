@@ -1,20 +1,9 @@
+import 'package:campuslink/app_theme.dart';
 import 'package:campuslink/screens/dashboard/dashboard.dart';
 import 'package:campuslink/screens/chatbot/chatbot.dart';
 import 'package:campuslink/screens/chatroom/chatroom.dart';
 import 'package:campuslink/screens/community_post/community_post.dart';
 import 'package:flutter/material.dart';
-
-class NavItem {
-  final IconData icon;
-  final String label;
-  final Color activeColor;
-
-  const NavItem({
-    required this.icon,
-    required this.label,
-    this.activeColor = const Color(0xFFBB86FC),
-  });
-}
 
 class MainPage extends StatefulWidget {
   final String userType;
@@ -37,7 +26,7 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
   late List<Widget> _pages;
-  late List<NavItem> _navItems;
+  late List<_NavTab> _tabs;
 
   @override
   void initState() {
@@ -46,19 +35,6 @@ class _MainPageState extends State<MainPage> {
   }
 
   void _initializeNavigation() {
-    final baseNavItems = <NavItem>[
-      const NavItem(
-        icon: Icons.dashboard_rounded,
-        label: 'Dashboard',
-        activeColor: Color(0xFFBB86FC),
-      ),
-      const NavItem(
-        icon: Icons.group_rounded,
-        label: 'Community',
-        activeColor: Color(0xFF03DAC6),
-      ),
-    ];
-
     switch (widget.userType.toLowerCase()) {
       case 'guest':
         _pages = [
@@ -68,13 +44,10 @@ class _MainPageState extends State<MainPage> {
           CommunityPost(username: widget.userId),
           Chatbot(),
         ];
-        _navItems = [
-          ...baseNavItems,
-          const NavItem(
-            icon: Icons.smart_toy,
-            label: 'Chatbot',
-            activeColor: Color(0xFFCF6679),
-          ),
+        _tabs = const [
+          _NavTab(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+          _NavTab(icon: Icons.diversity_3_rounded, label: 'Community'),
+          _NavTab(icon: Icons.smart_toy_rounded, label: 'Assistant'),
         ];
         break;
       case 'admin':
@@ -88,18 +61,11 @@ class _MainPageState extends State<MainPage> {
           Chatroom(),
           Chatbot(),
         ];
-        _navItems = [
-          ...baseNavItems,
-          const NavItem(
-            icon: Icons.chat_rounded,
-            label: 'Chatroom',
-            activeColor: Color(0xFF03DAC6),
-          ),
-          const NavItem(
-            icon: Icons.smart_toy,
-            label: 'Chatbot',
-            activeColor: Color(0xFFCF6679),
-          ),
+        _tabs = const [
+          _NavTab(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+          _NavTab(icon: Icons.diversity_3_rounded, label: 'Community'),
+          _NavTab(icon: Icons.forum_rounded, label: 'Chatroom'),
+          _NavTab(icon: Icons.smart_toy_rounded, label: 'Assistant'),
         ];
         break;
       default:
@@ -109,13 +75,10 @@ class _MainPageState extends State<MainPage> {
           CommunityPost(username: widget.userId),
           Chatbot(),
         ];
-        _navItems = [
-          ...baseNavItems,
-          const NavItem(
-            icon: Icons.smart_toy,
-            label: 'Chatbot',
-            activeColor: Color(0xFFCF6679),
-          ),
+        _tabs = const [
+          _NavTab(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+          _NavTab(icon: Icons.diversity_3_rounded, label: 'Community'),
+          _NavTab(icon: Icons.smart_toy_rounded, label: 'Assistant'),
         ];
         break;
     }
@@ -123,62 +86,89 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: _pages[_currentIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
+          color: isDark ? AppTheme.darkSurface : AppTheme.lightSurface,
+          border: Border(
+            top: BorderSide(
+              color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
             ),
-          ],
+          ),
         ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          child: BottomNavigationBar(
-            elevation: 0,
-            backgroundColor: const Color(0xFF1F1F1F),
-            currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
-            items: _navItems.map((item) {
-              return BottomNavigationBarItem(
-                icon: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: BoxDecoration(
-                    color: _currentIndex == _navItems.indexOf(item)
-                        ? item.activeColor.withOpacity(0.2)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
+              children: List.generate(_tabs.length, (i) {
+                final tab = _tabs[i];
+                final selected = _currentIndex == i;
+                return Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _currentIndex = i),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOut,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: selected ? AppTheme.brandGradient : null,
+                        color: selected
+                            ? null
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            tab.icon,
+                            size: 22,
+                            color: selected
+                                ? Colors.white
+                                : (isDark
+                                    ? Colors.white38
+                                    : Colors.black38),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            tab.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: selected
+                                  ? Colors.white
+                                  : (isDark
+                                      ? Colors.white38
+                                      : Colors.black38),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  child: Icon(
-                    item.icon,
-                    color: _currentIndex == _navItems.indexOf(item)
-                        ? item.activeColor
-                        : Colors.grey[400],
-                  ),
-                ),
-                label: item.label,
-                backgroundColor: Colors.transparent,
-              );
-            }).toList(),
-            selectedItemColor: _navItems[_currentIndex].activeColor,
-            unselectedItemColor: Colors.grey[400],
-            showUnselectedLabels: true,
-            type: BottomNavigationBarType.fixed,
-            selectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontSize: 10,
+                );
+              }),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+class _NavTab {
+  final IconData icon;
+  final String label;
+  const _NavTab({required this.icon, required this.label});
 }
