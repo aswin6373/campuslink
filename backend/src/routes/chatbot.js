@@ -31,12 +31,12 @@ router.post('/ask', async (req, res, next) => {
       .join('\n\n');
 
     try {
-      const text = await askGemini({
+      const { text, model } = await askGemini({
         prompt,
         institution: req.auth.institution,
         formattedAnswers,
       });
-      res.json({ answer: text });
+      res.json({ answer: text, model });
     } catch (e) {
       console.error('Chatbot error:', e.message);
       res.status(502).json({ error: 'The AI assistant is unavailable right now. Please try again later.' });

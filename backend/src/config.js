@@ -10,6 +10,9 @@ const config = {
   deviceApiKey: process.env.DEVICE_API_KEY,
   // Google Gemini key used by the chatbot (server-side only)
   geminiApiKey: process.env.GEMINI_API_KEY,
+  // Optional comma-separated model chain override, e.g.
+  // GEMINI_MODELS=gemini-3.5-flash-lite,gemini-2.5-flash
+  geminiModels: process.env.GEMINI_MODELS,
   // Minutes: device is considered "connected" if it heartbeats within this window
   deviceOfflineAfterMinutes: parseInt(process.env.DEVICE_OFFLINE_MINUTES || '2', 10),
   // Max stored media size (bytes) — media is stored in Postgres as bytea
