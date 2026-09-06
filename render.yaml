@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: campuslink-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # set this in the Render dashboard to your Supabase pooler string
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DEVICE_API_KEY
+        sync: false # shared secret hardcoded into the NodeMCU firmware
+      - key: DEVICE_OFFLINE_MINUTES
+        value: "2"

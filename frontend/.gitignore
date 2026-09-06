@@ -24,13 +24,11 @@
 .pub-cache/
 .pub/
 
-# Build artifacts
-**/build/
-**/.cxx/
+# Symbolication related
+app.*.symbols
 
-# Environment / secrets (frontend and backend)
+# Obfuscation related
+app.*.map.json
+
+# Environment / secrets
 .env
-backend/.env
-
-# Node backend
-backend/node_modules/
