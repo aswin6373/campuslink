@@ -16,5 +16,7 @@ services:
         generateValue: true
       - key: DEVICE_API_KEY
         sync: false # shared secret hardcoded into the NodeMCU firmware
+      - key: GEMINI_API_KEY
+        sync: false # free key from https://aistudio.google.com/apikey
       - key: DEVICE_OFFLINE_MINUTES
         value: "2"

@@ -1,9 +1,50 @@
 const express = require('express');
 const pool = require('../db');
 const { requireAuth, withInstitution } = require('../middleware/auth');
+const { askGemini } = require('../services/gemini');
 
 const router = express.Router();
 router.use(requireAuth, withInstitution);
+
+/**
+ * POST /api/chatbot/ask — ask the AI assistant a question.
+ * The institution's curated answers are used as grounding context.
+ * body: { prompt }
+ */
+router.post('/ask', async (req, res, next) => {
+  try {
+    const prompt = String((req.body && req.body.prompt) || '').trim();
+    if (!prompt) {
+      return res.status(400).json({ error: 'prompt is required' });
+    }
+
+    // Fetch the institution's curated Q&A as grounding context
+    const { rows } = await pool.query(
+      `SELECT q.category, a.answer
+       FROM chatbot_answers a
+       JOIN chatbot_questions q ON q.id = a.question_id
+       WHERE a.institution = $1 AND a.active = true`,
+      [req.auth.institution]
+    );
+    const formattedAnswers = rows
+      .map((r) => `Category: ${r.category}\nAnswer: ${r.answer}`)
+      .join('\n\n');
+
+    try {
+      const text = await askGemini({
+        prompt,
+        institution: req.auth.institution,
+        formattedAnswers,
+      });
+      res.json({ answer: text });
+    } catch (e) {
+      console.error('Chatbot error:', e.message);
+      res.status(502).json({ error: 'The AI assistant is unavailable right now. Please try again later.' });
+    }
+  } catch (e) {
+    next(e);
+  }
+});
 
 /**
  * GET /api/chatbot/questions — predefined question bank (admins manage this)

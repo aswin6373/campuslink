@@ -8,6 +8,8 @@ const config = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   // Shared secret the NodeMCU must send as "x-device-key" header
   deviceApiKey: process.env.DEVICE_API_KEY,
+  // Google Gemini key used by the chatbot (server-side only)
+  geminiApiKey: process.env.GEMINI_API_KEY,
   // Minutes: device is considered "connected" if it heartbeats within this window
   deviceOfflineAfterMinutes: parseInt(process.env.DEVICE_OFFLINE_MINUTES || '2', 10),
   // Max stored media size (bytes) — media is stored in Postgres as bytea
@@ -27,6 +29,10 @@ if (!config.jwtSecret) {
 if (!config.deviceApiKey) {
   console.error('FATAL: DEVICE_API_KEY is not set. Generate one with: openssl rand -hex 16');
   process.exit(1);
+}
+
+if (!config.geminiApiKey) {
+  console.warn('WARNING: GEMINI_API_KEY is not set - the chatbot will respond with an error until it is added.');
 }
 
 module.exports = config;
