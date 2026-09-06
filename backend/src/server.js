@@ -43,6 +43,7 @@ app.get('/healthz', async (req, res) => {
     await pool.query('SELECT 1');
     res.json({ status: 'ok', db: 'up' });
   } catch (e) {
+    console.error('Health check DB error:', e.message);
     res.status(503).json({ status: 'degraded', db: 'down' });
   }
 });
