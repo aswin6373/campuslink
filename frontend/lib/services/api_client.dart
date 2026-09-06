@@ -17,6 +17,28 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
+  /// In-memory mirror of the stored token so widgets that cannot await
+  /// (e.g. image headers) can access it synchronously.
+  static String? _cachedToken;
+
+  /// Call once at app start (after login state is known) to warm the cache.
+  static Future<void> warmTokenCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    _cachedToken = prefs.getString('authToken');
+  }
+
+  static Map<String, String> mediaHeaders() {
+    final token = _cachedToken;
+    return {
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
+
+  /// Clears the in-memory token (call on logout).
+  static void clearTokenCache() {
+    _cachedToken = null;
+  }
+
   static Uri _uri(String path, [Map<String, String>? query]) {
     return Uri.parse('${Config.baseUrl}$path').replace(
       queryParameters: query,
@@ -26,6 +48,7 @@ class ApiClient {
   static Future<Map<String, String>> _headers() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('authToken');
+    _cachedToken = token;
     return {
       'Content-Type': 'application/json',
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',

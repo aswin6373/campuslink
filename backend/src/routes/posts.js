@@ -5,13 +5,16 @@ const { requireAuth, withInstitution } = require('../middleware/auth');
 const config = require('../config');
 
 const router = express.Router();
-router.use(requireAuth, withInstitution);
+
+// NOTE: auth is applied per-route. GET /media/:id stays public because
+// image widgets (CachedNetworkImage) cannot send Authorization headers,
+// and media ids are unguessable UUIDs.
 
 /**
  * GET /api/posts — newest first, with signed-ish media URL
  * media is served through /api/posts/media/:id
  */
-router.get('/', async (req, res, next) => {
+router.get('/', requireAuth, withInstitution, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT p.id, p.user_id, p.content, p.media_id, p.likes_count, p.created_at,
@@ -43,7 +46,7 @@ router.get('/', async (req, res, next) => {
 /**
  * POST /api/posts — JSON body { content, media_base64?, media_name? }
  */
-router.post('/', async (req, res, next) => {
+router.post('/', requireAuth, withInstitution, async (req, res, next) => {
   try {
     const { content, media_base64, media_name } = req.body || {};
     if ((!content || !String(content).trim()) && !media_base64) {
@@ -82,7 +85,7 @@ router.post('/', async (req, res, next) => {
 /**
  * POST /api/posts/:id/like
  */
-router.post('/:id/like', async (req, res, next) => {
+router.post('/:id/like', requireAuth, withInstitution, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `UPDATE posts SET likes_count = likes_count + 1
@@ -100,14 +103,30 @@ router.post('/:id/like', async (req, res, next) => {
 /**
  * GET /api/posts/media/:id — stream stored media
  */
+const MIME_BY_EXT = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  bmp: 'image/bmp',
+  heic: 'image/heic',
+};
+
 router.get('/media/:id', async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      'SELECT data, mime_type FROM media WHERE id = $1',
+      'SELECT file_name, data, mime_type FROM media WHERE id = $1',
       [req.params.id]
     );
     if (rows.length === 0) return res.status(404).json({ message: 'Media not found' });
-    res.set('Content-Type', rows[0].mime_type || 'application/octet-stream');
+
+    let mime = rows[0].mime_type;
+    if (!mime || mime === 'application/octet-stream') {
+      const ext = String(rows[0].file_name || '').split('.').pop().toLowerCase();
+      mime = MIME_BY_EXT[ext] || 'application/octet-stream';
+    }
+    res.set('Content-Type', mime);
     res.set('Cache-Control', 'public, max-age=86400');
     res.send(rows[0].data);
   } catch (e) {

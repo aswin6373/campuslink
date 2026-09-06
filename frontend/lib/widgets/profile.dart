@@ -79,6 +79,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
+      ApiClient.clearTokenCache();
 
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil(

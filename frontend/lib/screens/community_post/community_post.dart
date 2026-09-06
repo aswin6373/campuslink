@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:mime/mime.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/profile.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +9,7 @@ import 'package:campuslink/services/media_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:campuslink/services/api_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CommunityPost extends StatefulWidget {
   final String username;
@@ -87,10 +89,13 @@ class _CommunityPostState extends State<CommunityPost> {
     try {
       String? mediaBase64;
       String? mediaName;
+      String? mediaType;
       if (_selectedMedia != null) {
         final bytes = await _selectedMedia!.readAsBytes();
         mediaBase64 = base64Encode(bytes);
         mediaName = _selectedMedia!.path.split('/').last;
+        mediaType = lookupMimeType(_selectedMedia!.path, headerBytes: bytes) ??
+            'image/jpeg';
       }
 
       // Send post data including media (base64) if available
@@ -98,6 +103,7 @@ class _CommunityPostState extends State<CommunityPost> {
         'content': content,
         if (mediaBase64 != null) 'media_base64': mediaBase64,
         if (mediaName != null) 'media_name': mediaName,
+        if (mediaType != null) 'media_type': mediaType,
       });
 
       if (!mounted) return;
@@ -317,6 +323,7 @@ class PostCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
               child: CachedNetworkImage(
                 imageUrl: imageUrl!,
+                httpHeaders: ApiClient.mediaHeaders(),
                 placeholder: (context, url) {
                   return Container(
                     height: 200,

@@ -1,4 +1,5 @@
 import 'package:campuslink/app_theme.dart';
+import 'package:campuslink/services/api_client.dart';
 import 'package:campuslink/screens/authentication/user_login.dart';
 import 'package:campuslink/screens/authentication/signup_screen.dart';
 import 'package:campuslink/screens/chatbot/chatbot.dart';
@@ -27,6 +28,7 @@ void main() async {
   }
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+  await ApiClient.warmTokenCache();
   await _initFirebase();
 
   runApp(
